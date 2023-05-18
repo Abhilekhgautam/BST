@@ -13,7 +13,8 @@ public:
     BST(){
         root = nullptr;
     }
-    BST(float val){
+
+    [[maybe_unused]] BST(float val){
         root = new Node();
         root->val = val;
         root->right = nullptr;
@@ -23,30 +24,75 @@ public:
     Node* get_root(){
         return root;
     }
-    void insert_data(float val);
-    void inorder_traverse(Node* root);
-    Node* search_data(float val);
-    void delete_data(float val);
-};
+    void insert_data(float);
+    void inorder_traverse(Node*);
+    Node* search_data(float);
+    void delete_data(float);
 
+    [[maybe_unused]] static Node* minimum(Node*);
+    static Node* maximum(Node*);
+    static Node* successor(Node*);
+};
+// returns the minimum value considering the argument as the root.
+[[maybe_unused]] Node* BST::minimum(Node* node) {
+    auto temp_node = node;
+    if(node->left == nullptr) return nullptr;
+    while(node != nullptr){
+      temp_node = node;
+      node = node->left;
+    }
+    return temp_node;
+}
+Node* BST::maximum(Node* node) {
+    auto temp_node = node;
+    if(node->right == nullptr) return nullptr;
+    while(node != nullptr){
+        temp_node = node;
+        node = node->right;
+    }
+    return temp_node;
+}
+// successor of any node 'x' is a node with the smallest value greater than x.val
+Node* BST::successor(Node* node){
+    if(node->left != nullptr) {
+        std::cout << "The successor of " << node->val << " is " << maximum(node->left) -> val;
+        return maximum(node->left);
+    }
+
+}
 // risky: the provided node must exist
-// returns the parent of the given node (not the root of the tree)
+// returns the parent node of the given node (not the root of the tree)
 Node* BST::get_parent(Node* node) {
     if (node == root){
+        std::cout << "nullptr encountered\n";
         return nullptr;
     }
     auto temp = root;
-    Node* parent = nullptr;
+    Node* parent = new Node();
     while (temp != nullptr){
         parent = temp;
-        if (temp->right->val == node->val || temp->left->val == node->val){
-            return parent;
+        if(temp->right != nullptr){
+            if(temp->right->val == node->val){
+                std::cout << "The parent of " << node->val << " is " << parent->val << '\n';
+                return parent;
+            }
+            else if(node->val < temp->val){
+                temp = temp->left;
+            } else if (node->val > temp->val){
+                temp = temp->right;
+            }
+        } else if (temp->left != nullptr){
+            if(temp->left->val == node->val){
+                std::cout << "The parent of " << node->val << " is " << parent->val << '\n';
+                return parent;
+            }
+            else if(node->val < temp->val){
+                temp = temp->left;
+            } else if (node->val > temp->val){
+                temp = temp->right;
+            }
         }
-        else if(node->val < temp->val){
-            temp = temp->left;
-        } else if (node->val > temp->val){
-            temp = temp->right;
-        }
+
     }
 }
 
@@ -83,20 +129,20 @@ void BST::insert_data(float val) {
     }
 
 }
-
-void BST::inorder_traverse(Node* root) {
-    if(root != nullptr){
-        std::cout << root->val << '\n';
-        inorder_traverse(root->left);
-        inorder_traverse(root->right);
+// recursively traverse through the tree nodes.
+void BST::inorder_traverse(Node* node) {
+    if(node != nullptr){
+        inorder_traverse(node->left);
+        std::cout << node->val << '\n';
+        inorder_traverse(node->right);
     }
 }
-
+// search a node with the given value and return the node.
 Node* BST::search_data(float val) {
     auto temp = root;
     while (temp != nullptr){
         if (temp->val == val){
-            std::cout << "The value" << val << " is found\n";
+            std::cout << "The value " << val << " is found\n";
             return temp; // value found so return early
         }
         else if(val < temp->val){
@@ -109,12 +155,32 @@ Node* BST::search_data(float val) {
     std::cout << val << " not found\n";
     return temp;
 }
-
+// delete a node with the given value.
 void BST::delete_data(float val) {
     // check if the value exist
     auto delete_node = search_data(val);
+    auto parent = get_parent(delete_node);
+    auto successor_node = successor(delete_node);
+
+    // special case : deletion of the root node.
+    if (delete_node == root){
+        auto successor_parent = get_parent(successor_node);
+        if(successor_parent->val > successor_node->val){
+            successor_parent->left = successor_node->right;
+        } else{
+            successor_parent->right = successor_node->right;
+        }
+        // replace the node to be deleted by successor
+        successor_node->left = delete_node->left;
+        successor_node->right = delete_node->right;
+
+        delete delete_node; // risky: free memory
+        // set the root of the BST.
+        root = successor_node;
+        return;
+    }
+
     if(delete_node != nullptr){
-        auto parent = get_parent(delete_node);
         std::cout << "Parent value: " << parent->val << "\n";
         // if the value exists
         // There are 3 cases
@@ -125,7 +191,7 @@ void BST::delete_data(float val) {
             else
                 parent->left = nullptr;
 
-            delete delete_node; // risky: clean up thing
+            delete delete_node;
         }
         // 2. if the node has only one child, set the child as parent
         else if(delete_node->right == nullptr || delete_node->left == nullptr) {
@@ -148,6 +214,40 @@ void BST::delete_data(float val) {
         }
         // 3. if the node has both children,
         else{
+           // find the successor of the node to be deleted, the successor cannot have left child.
+           // if the immediate rightmost node is the successor (one with no left child)
+           if(delete_node->right->left == nullptr){
+               auto replace_temp_node = delete_node->right;
+               replace_temp_node->left = delete_node->left;
+               if(parent->val > delete_node->val){
+                   parent->left = replace_temp_node;
+               } else{
+                   parent->right = replace_temp_node;
+               }
+               std::cout << "Deleted value: " << delete_node->val << '\n';
+              delete delete_node;
+           }
+           // if the immediate rightmost node is not the successor
+           else{
+               //replace the successor with its right child
+               auto successor_parent = get_parent(successor_node);
+               if(successor_parent->val > successor_node->val){
+                   successor_parent->left = successor_node->right;
+               } else{
+                   successor_parent->right = successor_node->right;
+               }
+               // replace the node to be deleted by successor
+               if(parent->val > delete_node->val){
+                   parent->left = successor_node;
+               } else{
+                   parent->right = successor_node;
+               }
+               successor_node->left = delete_node->left;
+               successor_node->right = delete_node->right;
+
+               delete delete_node;
+           }
+
 
         }
     } else {
@@ -155,23 +255,29 @@ void BST::delete_data(float val) {
     }
 }
 
-
 int main() {
 
     auto my_btree = new BST();
+    // insert nodes to the tree.
     my_btree->insert_data(5.0f);
     my_btree->insert_data(6.0f);
     my_btree->insert_data(9.0f);
     my_btree->insert_data(3.0f);
     my_btree->insert_data(4.0f);
     my_btree->insert_data(2.0f);
+    my_btree->insert_data(8.0f);
+    my_btree->insert_data(7.0f);
+    my_btree->insert_data(10.0f);
+    my_btree->insert_data(14.0f);
+    my_btree->insert_data(12.0f);
+    my_btree->insert_data(13.0f);
+
 
     std::cout << "Before Deletion\n";
     my_btree->inorder_traverse(my_btree->get_root());
 
-    my_btree->delete_data(4.0f);
+    my_btree->delete_data(5.0f);
     std::cout << "After Deletion\n";
     my_btree->inorder_traverse(my_btree->get_root());
-
     return 0; // happy compiler :)
 }
