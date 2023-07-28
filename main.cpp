@@ -279,5 +279,6 @@ int main() {
     my_btree->delete_data(5.0f);
     std::cout << "After Deletion\n";
     my_btree->inorder_traverse(my_btree->get_root());
+    delete my_btree;
     return 0; // happy compiler :)
 }
